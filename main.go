@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -76,10 +78,10 @@ func getUserByID(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, Response{
 			Success: false,
-			Error:   "invalid user ID format", // 明确指出格式错误
+			Error:   "invalid user ID format",
 			Code:    400,
 		})
-		return // 提前返回避免继续执行
+		return
 	}
 
 	// 3. 根据查找结果返回响应
@@ -146,10 +148,70 @@ func createUser(c *gin.Context) {
 
 // updateUser handles PUT /users/:id
 func updateUser(c *gin.Context) {
-	// TODO: Get user ID from path
-	// Parse JSON request body
-	// Find and update user
-	// Return updated user
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "invalid user ID format",
+			Code:    400,
+		})
+		return
+	}
+
+	user, index := findUserByID(id)
+	if index == -1 {
+		c.JSON(http.StatusNotFound, Response{
+			Success: false,
+			Error:   "user not found",
+			Code:    http.StatusNotFound,
+		})
+		return
+	}
+
+	var updateData struct {
+		Name  string `json:"name" binding:"omitempty,required"`
+		Email string `json:"email" binding:"omitempty,required,email"`
+		Age   int    `json:"age" binding:"omitempty,min=0,max=150"`
+	}
+	if err := c.ShouldBindJSON(&updateData); err != nil {
+		c.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "invalid update data: " + err.Error(),
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+	if updateData.Email != "" && updateData.Email != user.Email {
+		for _, u := range users {
+			if u.Email == updateData.Email {
+				c.JSON(http.StatusConflict, Response{
+					Success: false,
+					Error:   "email already in use",
+					Code:    http.StatusConflict,
+				})
+				return
+			}
+		}
+	}
+
+	if updateData.Name != "" {
+		user.Name = updateData.Name
+	}
+	if updateData.Email != "" {
+		user.Email = updateData.Email
+	}
+	if updateData.Age != 0 {
+		user.Age = updateData.Age
+	}
+
+	users[index] = *user
+	c.JSON(http.StatusOK, Response{
+		Success: true,
+		Data:    user,
+		Message: "user updated successfully",
+		Code:    http.StatusOK,
+	})
 }
 
 // deleteUser handles DELETE /users/:id
@@ -180,9 +242,17 @@ func findUserByID(id int) (*User, int) {
 
 // Helper function to validate user data
 func validateUser(user User) error {
-	// TODO: Implement validation
-	// Check required fields: Name, Email
-	// Validate email format (basic check)
+	if strings.TrimSpace(user.Name) == "" {
+		return fmt.Errorf("name is required")
+	}
+
+	if strings.TrimSpace(user.Email) == "" {
+		return fmt.Errorf("email is required")
+	}
+
+	if !strings.Contains(user.Email, "@") {
+		return fmt.Errorf("invalid email format (missing @)")
+	}
 
 	return nil
 }
