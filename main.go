@@ -82,17 +82,8 @@ func getUserByID(c *gin.Context) {
 		return // 提前返回避免继续执行
 	}
 
-	// 2. 查找用户（找到后立即退出循环）
-	var foundUser *User // 使用指针避免值拷贝
-	for i := range users {
-		if users[i].ID == id {
-			foundUser = &users[i]
-			break // 找到后立即退出循环，提升效率
-		}
-	}
-
 	// 3. 根据查找结果返回响应
-	if foundUser != nil {
+	if foundUser, index := findUserByID(id); index != -1 {
 		c.JSON(http.StatusOK, Response{
 			Success: true,
 			Data:    foundUser,
@@ -177,8 +168,13 @@ func searchUsers(c *gin.Context) {
 
 // Helper function to find user by ID
 func findUserByID(id int) (*User, int) {
-	// TODO: Implement user lookup
-	// Return user pointer and index, or nil and -1 if not found
+	var foundUser *User
+	for i, user := range users {
+		if user.ID == id {
+			foundUser = &users[i]
+			return foundUser, i
+		}
+	}
 	return nil, -1
 }
 
@@ -187,5 +183,6 @@ func validateUser(user User) error {
 	// TODO: Implement validation
 	// Check required fields: Name, Email
 	// Validate email format (basic check)
+
 	return nil
 }
