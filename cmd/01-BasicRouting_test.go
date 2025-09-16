@@ -286,4 +286,3 @@ func TestSearchUsers_MissingParameter(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, response.Success)
 }
-

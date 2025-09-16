@@ -249,20 +249,35 @@ func deleteUser(c *gin.Context) {
 
 // searchUsers handles GET /users/search?name=value
 func searchUsers(c *gin.Context) {
-	queryLower := strings.ToLower(c.Query("name"))
+	query := c.Query("name")
+	if query == "" {
+		c.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "name parameter is required",
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	queryLower := strings.ToLower(query)
 
 	var matchUser []User
 	for _, user := range users {
-		// 将用户名转换为小写后判断是否包含查询字符串
 		userNameLower := strings.ToLower(user.Name)
 		if strings.Contains(userNameLower, queryLower) {
 			matchUser = append(matchUser, user)
 		}
 	}
 
+	// 显式初始化为空切片，避免 nil
+	result := []interface{}{}
+	for _, u := range matchUser {
+		result = append(result, u)
+	}
+
 	c.JSON(http.StatusOK, Response{
 		Success: true,
-		Data:    matchUser,
+		Data:    result,
 		Message: fmt.Sprintf("found %d matching users", len(matchUser)),
 		Code:    http.StatusOK,
 	})
@@ -278,21 +293,4 @@ func findUserByID(id int) (*User, int) {
 		}
 	}
 	return nil, -1
-}
-
-// Helper function to validate user data
-func validateUser(user User) error {
-	if strings.TrimSpace(user.Name) == "" {
-		return fmt.Errorf("name is required")
-	}
-
-	if strings.TrimSpace(user.Email) == "" {
-		return fmt.Errorf("email is required")
-	}
-
-	if !strings.Contains(user.Email, "@") {
-		return fmt.Errorf("invalid email format (missing @)")
-	}
-
-	return nil
 }
