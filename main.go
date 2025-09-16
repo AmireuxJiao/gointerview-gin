@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -52,7 +53,6 @@ func main() {
 	// GET /users/search - Search users by name
 	router.GET("/users/search", searchUsers)
 
-	// TODO: Start server on port 8080
 	router.Run(":8080")
 }
 
@@ -60,7 +60,6 @@ func main() {
 
 // getAllUsers handles GET /users
 func getAllUsers(c *gin.Context) {
-	// TODO: Return all users
 	req := Response{
 		Success: true,
 		Data:    users,
@@ -71,9 +70,26 @@ func getAllUsers(c *gin.Context) {
 
 // getUserByID handles GET /users/:id
 func getUserByID(c *gin.Context) {
-	// TODO: Get user by ID
-	// Handle invalid ID format
-	// Return 404 if user not found
+	id, _ := strconv.Atoi(c.Param("id"))
+	var req Response = Response{
+		Success: false,
+		Message: "user not found",
+	}
+
+	for _, v := range users {
+		if id == v.ID {
+			req = Response{
+				Success: true,
+				Data:    v,
+				Message: "successfully find user by id",
+			}
+		}
+	}
+	if req.Success {
+		c.JSON(http.StatusOK, req)
+	} else {
+		c.JSON(http.StatusNotFound, req)
+	}
 }
 
 // createUser handles POST /users
