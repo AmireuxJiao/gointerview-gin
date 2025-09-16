@@ -109,10 +109,48 @@ func getUserByID(c *gin.Context) {
 
 // createUser handles POST /users
 func createUser(c *gin.Context) {
-	// TODO: Parse JSON request body
-	// Validate required fields
-	// Add user to storage
-	// Return created user
+	var userInput struct {
+		Name  string `json:"name" binding:"required"`
+		Email string `json:"email" binding:"required,email"`
+		Age   int    `json:"age" binding:"omitempty,min=0,max=150"`
+	}
+
+	// 解析传入的json
+	if err := c.ShouldBindJSON(&userInput); err != nil {
+		c.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "Invalid input: " + err.Error(),
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	for _, em := range users {
+		if em.Email == userInput.Email {
+			c.JSON(http.StatusConflict, Response{
+				Success: false,
+				Error:   "Email already in users",
+				Code:    http.StatusConflict,
+			})
+			return
+		}
+	}
+
+	newUser := User{
+		ID:    nextID,
+		Name:  userInput.Name,
+		Email: userInput.Email,
+		Age:   userInput.Age,
+	}
+	users = append(users, newUser)
+	nextID++
+
+	c.JSON(http.StatusCreated, Response{
+		Success: true,
+		Data:    newUser,
+		Message: "User Create successfully",
+		Code:    http.StatusCreated,
+	})
 }
 
 // updateUser handles PUT /users/:id
