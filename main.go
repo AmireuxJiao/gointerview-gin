@@ -70,25 +70,40 @@ func getAllUsers(c *gin.Context) {
 
 // getUserByID handles GET /users/:id
 func getUserByID(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	var req Response = Response{
-		Success: false,
-		Message: "user not found",
+	// 1. 解析ID参数并处理格式错误
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "invalid user ID format", // 明确指出格式错误
+			Code:    400,
+		})
+		return // 提前返回避免继续执行
 	}
 
-	for _, v := range users {
-		if id == v.ID {
-			req = Response{
-				Success: true,
-				Data:    v,
-				Message: "successfully find user by id",
-			}
+	// 2. 查找用户（找到后立即退出循环）
+	var foundUser *User // 使用指针避免值拷贝
+	for i := range users {
+		if users[i].ID == id {
+			foundUser = &users[i]
+			break // 找到后立即退出循环，提升效率
 		}
 	}
-	if req.Success {
-		c.JSON(http.StatusOK, req)
+
+	// 3. 根据查找结果返回响应
+	if foundUser != nil {
+		c.JSON(http.StatusOK, Response{
+			Success: true,
+			Data:    foundUser,
+			Message: "user found successfully",
+		})
 	} else {
-		c.JSON(http.StatusNotFound, req)
+		c.JSON(http.StatusNotFound, Response{
+			Success: false,
+			Error:   "user not found",
+			Code:    404,
+		})
 	}
 }
 
