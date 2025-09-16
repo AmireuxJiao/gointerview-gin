@@ -216,16 +216,56 @@ func updateUser(c *gin.Context) {
 
 // deleteUser handles DELETE /users/:id
 func deleteUser(c *gin.Context) {
-	// TODO: Get user ID from path
-	// Find and remove user
-	// Return success message
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "invalid user ID format",
+			Code:    400,
+		})
+		return
+	}
+
+	_, index := findUserByID(id)
+	if index == -1 {
+		c.JSON(http.StatusNotFound, Response{
+			Success: false,
+			Error:   "user not found",
+			Code:    http.StatusNotFound,
+		})
+		return
+	}
+
+	users = append(users[:index], users[index+1:]...)
+
+	// 4. 返回删除成功的响应
+	c.JSON(http.StatusOK, Response{
+		Success: true,
+		Message: "user deleted successfully",
+		Code:    http.StatusOK,
+	})
 }
 
 // searchUsers handles GET /users/search?name=value
 func searchUsers(c *gin.Context) {
-	// TODO: Get name query parameter
-	// Filter users by name (case-insensitive)
-	// Return matching users
+	queryLower := strings.ToLower(c.Query("name"))
+
+	var matchUser []User
+	for _, user := range users {
+		// 将用户名转换为小写后判断是否包含查询字符串
+		userNameLower := strings.ToLower(user.Name)
+		if strings.Contains(userNameLower, queryLower) {
+			matchUser = append(matchUser, user)
+		}
+	}
+
+	c.JSON(http.StatusOK, Response{
+		Success: true,
+		Data:    matchUser,
+		Message: fmt.Sprintf("found %d matching users", len(matchUser)),
+		Code:    http.StatusOK,
+	})
 }
 
 // Helper function to find user by ID
