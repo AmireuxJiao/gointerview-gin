@@ -196,6 +196,7 @@ func getStats(c *gin.Context) {
 		"total_requests": 0, // Could track this in middleware
 		"uptime":         "24h",
 	}
+	println(stats)
 
 	// TODO: Return stats in standard format
 }
