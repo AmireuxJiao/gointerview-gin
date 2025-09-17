@@ -1,9 +1,12 @@
 package main
 
 import (
+	"errors"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 // Article represents a blog article
@@ -33,26 +36,33 @@ var articles = []Article{
 var nextID = 3
 
 func main() {
-	// TODO: Create Gin router without default middleware
-	// Use gin.New() instead of gin.Default()
+	route := gin.New()
 
-	// TODO: Setup custom middleware in correct order
 	// 1. ErrorHandlerMiddleware (first to catch panics)
+	route.Use(ErrorHandlerMiddleware())
 	// 2. RequestIDMiddleware
+	route.Use(RequestIDMiddleware())
 	// 3. LoggingMiddleware
+	route.Use(LoggingMiddleware())
 	// 4. CORSMiddleware
+	route.Use(CORSMiddleware())
 	// 5. RateLimitMiddleware
+	route.Use(RateLimitMiddleware())
 	// 6. ContentTypeMiddleware
+	route.Use(ContentTypeMiddleware())
 
-	// TODO: Setup route groups
 	// Public routes (no authentication required)
+	route.GET("/ping", ping)
+	route.GET("/articles", getArticles)
+	route.GET("/articles/:id", getArticle)
+
 	// Protected routes (require authentication)
+	route.POST("/articles", AuthMiddleware(), createArticle)
+	route.PUT("/articles/:id", AuthMiddleware(), updateArticle)
+	route.DELETE("/articles/:id", AuthMiddleware(), deleteArticle)
+	route.GET("/admin/stats", AuthMiddleware(), getStats)
 
-	// TODO: Define routes
-	// Public: GET /ping, GET /articles, GET /articles/:id
-	// Protected: POST /articles, PUT /articles/:id, DELETE /articles/:id, GET /admin/stats
-
-	// TODO: Start server on port 8080
+	route.Run(":8080")
 }
 
 // TODO: Implement middleware functions
@@ -205,14 +215,27 @@ func getStats(c *gin.Context) {
 
 // findArticleByID finds an article by ID
 func findArticleByID(id int) (*Article, int) {
-	// TODO: Implement article lookup
-	// Return article pointer and index, or nil and -1 if not found
+	for i := range articles {
+		if articles[i].ID == id {
+			logrus.Debugf("在 article 中存在这个 id: %d", id)
+			return &articles[i], i
+		}
+	}
+	logrus.Debugf("在 article 中没有这个 id: %d", id)
+
 	return nil, -1
 }
 
 // validateArticle validates article data
 func validateArticle(article Article) error {
-	// TODO: Implement validation
-	// Check required fields: Title, Content, Author
+	if strings.TrimSpace(article.Title) == "" {
+		return errors.New("title is required")
+	}
+	if strings.TrimSpace(article.Content) == "" {
+		return errors.New("content is required")
+	}
+	if strings.TrimSpace(article.Author) == "" {
+		return errors.New("author is required")
+	}
 	return nil
 }
