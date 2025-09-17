@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"net/http"
 	"strings"
 	"time"
 
@@ -58,10 +59,14 @@ func main() {
 	route.GET("/articles/:id", getArticle)
 
 	// Protected routes (require authentication)
-	route.POST("/articles", AuthMiddleware(), createArticle)
-	route.PUT("/articles/:id", AuthMiddleware(), updateArticle)
-	route.DELETE("/articles/:id", AuthMiddleware(), deleteArticle)
-	route.GET("/admin/stats", AuthMiddleware(), getStats)
+	protected := route.Group("/")
+	protected.Use(AuthMiddleware())
+	{
+		protected.POST("/articles", createArticle)
+		protected.PUT("/articles/:id", updateArticle)
+		protected.DELETE("/articles/:id", deleteArticle)
+		protected.GET("/admin/stats", getStats)
+	}
 
 	route.Run(":8080")
 }
@@ -87,12 +92,31 @@ func RequestIDMiddleware() gin.HandlerFunc {
 // LoggingMiddleware logs all requests with timing information
 func LoggingMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// TODO: Capture start time
+		startTime := time.Now()
 
 		c.Next()
 
-		// TODO: Calculate duration and log request
+		// duration time
+		duration := time.Since(startTime)
+
+		// Get Request infomation
+		requestID := c.GetString("request_id")
+		method := c.Request.Method
+		path := c.Request.URL.Path
+		status := c.Writer.Status()
+		clientIP := c.ClientIP()
+		userAgent := c.Request.UserAgent()
+
 		// Format: [REQUEST_ID] METHOD PATH STATUS DURATION IP USER_AGENT
+		logrus.WithFields(logrus.Fields{
+			"request_id": requestID,
+			"method":     method,
+			"path":       path,
+			"status":     status,
+			"duration":   duration.String(),
+			"ip":         clientIP,
+			"user_agent": userAgent,
+		}).Info("Handled request")
 	}
 }
 
@@ -163,7 +187,11 @@ func ErrorHandlerMiddleware() gin.HandlerFunc {
 
 // ping handles GET /ping - health check endpoint
 func ping(c *gin.Context) {
-	// TODO: Return simple pong response with request ID
+	c.JSON(http.StatusOK, APIResponse{
+		Success:   true,
+		Message:   "pong",
+		RequestID: c.GetString("request_id"),
+	})
 }
 
 // getArticles handles GET /articles - get all articles with pagination
