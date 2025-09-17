@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -70,10 +71,14 @@ func main() {
 // RequestIDMiddleware generates a unique request ID for each request
 func RequestIDMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// TODO: Generate UUID for request ID
-		// Use github.com/google/uuid package
-		// Store in context as "request_id"
-		// Add to response header as "X-Request-ID"
+		// generate uuid
+		requestID := c.GetHeader("X-Request-ID")
+		if requestID == "" {
+			requestID = uuid.New().String()
+		}
+
+		c.Set("request_id", requestID)
+		c.Writer.Header().Set("X-Request-ID", requestID)
 
 		c.Next()
 	}
