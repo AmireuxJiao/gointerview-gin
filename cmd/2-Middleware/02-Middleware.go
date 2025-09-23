@@ -1,9 +1,14 @@
 package main
 
 import (
+	"errors"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 // Article represents a blog article
@@ -33,26 +38,37 @@ var articles = []Article{
 var nextID = 3
 
 func main() {
-	// TODO: Create Gin router without default middleware
-	// Use gin.New() instead of gin.Default()
+	route := gin.New()
 
-	// TODO: Setup custom middleware in correct order
 	// 1. ErrorHandlerMiddleware (first to catch panics)
+	route.Use(ErrorHandlerMiddleware())
 	// 2. RequestIDMiddleware
+	route.Use(RequestIDMiddleware())
 	// 3. LoggingMiddleware
+	route.Use(LoggingMiddleware())
 	// 4. CORSMiddleware
+	route.Use(CORSMiddleware())
 	// 5. RateLimitMiddleware
+	route.Use(RateLimitMiddleware())
 	// 6. ContentTypeMiddleware
+	route.Use(ContentTypeMiddleware())
 
-	// TODO: Setup route groups
 	// Public routes (no authentication required)
+	route.GET("/ping", ping)
+	route.GET("/articles", getArticles)
+	route.GET("/articles/:id", getArticle)
+
 	// Protected routes (require authentication)
+	protected := route.Group("/")
+	protected.Use(AuthMiddleware())
+	{
+		protected.POST("/articles", createArticle)
+		protected.PUT("/articles/:id", updateArticle)
+		protected.DELETE("/articles/:id", deleteArticle)
+		protected.GET("/admin/stats", getStats)
+	}
 
-	// TODO: Define routes
-	// Public: GET /ping, GET /articles, GET /articles/:id
-	// Protected: POST /articles, PUT /articles/:id, DELETE /articles/:id, GET /admin/stats
-
-	// TODO: Start server on port 8080
+	route.Run(":8080")
 }
 
 // TODO: Implement middleware functions
@@ -60,10 +76,14 @@ func main() {
 // RequestIDMiddleware generates a unique request ID for each request
 func RequestIDMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// TODO: Generate UUID for request ID
-		// Use github.com/google/uuid package
-		// Store in context as "request_id"
-		// Add to response header as "X-Request-ID"
+		// generate uuid
+		requestID := c.GetHeader("X-Request-ID")
+		if requestID == "" {
+			requestID = uuid.New().String()
+		}
+
+		c.Set("request_id", requestID)
+		c.Writer.Header().Set("X-Request-ID", requestID)
 
 		c.Next()
 	}
@@ -72,12 +92,31 @@ func RequestIDMiddleware() gin.HandlerFunc {
 // LoggingMiddleware logs all requests with timing information
 func LoggingMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// TODO: Capture start time
+		startTime := time.Now()
 
 		c.Next()
 
-		// TODO: Calculate duration and log request
+		// duration time
+		duration := time.Since(startTime)
+
+		// Get Request infomation
+		requestID := c.GetString("request_id")
+		method := c.Request.Method
+		path := c.Request.URL.Path
+		status := c.Writer.Status()
+		clientIP := c.ClientIP()
+		userAgent := c.Request.UserAgent()
+
 		// Format: [REQUEST_ID] METHOD PATH STATUS DURATION IP USER_AGENT
+		logrus.WithFields(logrus.Fields{
+			"request_id": requestID,
+			"method":     method,
+			"path":       path,
+			"status":     status,
+			"duration":   duration.String(),
+			"ip":         clientIP,
+			"user_agent": userAgent,
+		}).Info("Handled request")
 	}
 }
 
@@ -148,7 +187,11 @@ func ErrorHandlerMiddleware() gin.HandlerFunc {
 
 // ping handles GET /ping - health check endpoint
 func ping(c *gin.Context) {
-	// TODO: Return simple pong response with request ID
+	c.JSON(http.StatusOK, APIResponse{
+		Success:   true,
+		Message:   "pong",
+		RequestID: c.GetString("request_id"),
+	})
 }
 
 // getArticles handles GET /articles - get all articles with pagination
@@ -196,6 +239,7 @@ func getStats(c *gin.Context) {
 		"total_requests": 0, // Could track this in middleware
 		"uptime":         "24h",
 	}
+	println(stats)
 
 	// TODO: Return stats in standard format
 }
@@ -204,14 +248,27 @@ func getStats(c *gin.Context) {
 
 // findArticleByID finds an article by ID
 func findArticleByID(id int) (*Article, int) {
-	// TODO: Implement article lookup
-	// Return article pointer and index, or nil and -1 if not found
+	for i := range articles {
+		if articles[i].ID == id {
+			logrus.Debugf("在 article 中存在这个 id: %d", id)
+			return &articles[i], i
+		}
+	}
+	logrus.Debugf("在 article 中没有这个 id: %d", id)
+
 	return nil, -1
 }
 
 // validateArticle validates article data
 func validateArticle(article Article) error {
-	// TODO: Implement validation
-	// Check required fields: Title, Content, Author
+	if strings.TrimSpace(article.Title) == "" {
+		return errors.New("title is required")
+	}
+	if strings.TrimSpace(article.Content) == "" {
+		return errors.New("content is required")
+	}
+	if strings.TrimSpace(article.Author) == "" {
+		return errors.New("author is required")
+	}
 	return nil
 }
