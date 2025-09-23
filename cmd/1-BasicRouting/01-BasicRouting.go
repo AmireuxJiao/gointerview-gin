@@ -58,8 +58,6 @@ func main() {
 	router.Run(":8080")
 }
 
-// TODO: Implement handler functions
-
 // getAllUsers handles GET /users
 func getAllUsers(c *gin.Context) {
 	req := Response{
