@@ -26,7 +26,17 @@ func main() {
 // BinarySearch performs a standard binary search to find the target in the sorted array.
 // Returns the index of the target if found, or -1 if not found.
 func BinarySearch(arr []int, target int) int {
-	// TODO: Implement this function
+	for left, right := 0, len(arr)-1; left <= right; {
+		mid := left + (right-left)/2
+		if target == arr[mid] {
+			return mid
+		}
+		if target < arr[mid] {
+			right = mid - 1
+		} else if target > arr[mid] {
+			left = mid + 1
+		}
+	}
 	return -1
 }
 
