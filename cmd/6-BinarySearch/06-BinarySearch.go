@@ -43,8 +43,20 @@ func BinarySearch(arr []int, target int) int {
 // BinarySearchRecursive performs binary search using recursion.
 // Returns the index of the target if found, or -1 if not found.
 func BinarySearchRecursive(arr []int, target int, left int, right int) int {
-	// TODO: Implement this function
-	return -1
+	if left > right {
+		return -1
+	}
+
+	mid := left + (right-left)/2
+	if arr[mid] == target {
+		return mid
+	}
+
+	if arr[mid] > target {
+		return BinarySearchRecursive(arr, target, left, mid-1)
+	} else {
+		return BinarySearchRecursive(arr, target, mid+1, right)
+	}
 }
 
 // FindInsertPosition returns the index where the target should be inserted
