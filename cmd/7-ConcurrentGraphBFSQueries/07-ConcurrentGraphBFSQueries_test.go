@@ -62,7 +62,7 @@ func buildStarGraph(center, branches int) map[int][]int {
 	// Creates a star graph with one central node connected to many leaves
 	graph := make(map[int][]int)
 	centerConnections := make([]int, branches)
-	for i := 0; i < branches; i++ {
+	for i := range branches {
 		leafNode := center + 1 + i
 		centerConnections[i] = leafNode
 		graph[leafNode] = []int{} // leaf nodes have no connections
